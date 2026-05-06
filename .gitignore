@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+.env
+
+# Android
+*.apk
+*.aab
+*.class
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# ngrok
+ngrok.yml
+
+# OS
+.DS_Store
+Thumbs.db
