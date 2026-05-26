@@ -41,6 +41,7 @@ def _build_token_response(parent: Parent, db: Session) -> TokenResponse:
     )
     db.add(db_refresh)
     db.commit()
+    # Pas besoin de refresh car expire_on_commit=False
 
     return TokenResponse(
         access_token=access_token,
@@ -69,7 +70,7 @@ def register(data: RegisterRequest, db: Session) -> RegisterResponse:
     )
     db.add(parent)
     db.commit()
-    db.refresh(parent)
+    # Pas besoin de refresh car expire_on_commit=False
 
     tokens = _build_token_response(parent, db)
 
@@ -167,4 +168,3 @@ def logout(raw_token: str, db: Session) -> None:
     if db_token and not db_token.is_revoked:
         db_token.is_revoked = True
         db.commit()
-        
