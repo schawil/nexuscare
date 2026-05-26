@@ -1,33 +1,49 @@
-# --- Environnement Virtuel ---
-.venv/
-venv/
-ENV/
-env/
-
-# --- Caches Python et compilation ---
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
 
-# --- Variables d'environnement et Secrets ---
+# ── Environnement ─────────────────────────────────────────────────────────────
 .env
-.env.*
-!.env.example
-secrets.json
+.env.local
+.env.*.local
 
-# --- Bases de données locales (Tests / Dev) ---
+# ── Base de données ───────────────────────────────────────────────────────────
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
-# --- Fichiers système et IDE ---
-.vscode/
-.idea/
-.DS_Store
-*.db
+# ── Tests & Coverage ──────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
 
+# ── Alembic ───────────────────────────────────────────────────────────────────
+# On versionne les migrations mais pas les fichiers de lock
+alembic/__pycache__/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.iml
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── ngrok ─────────────────────────────────────────────────────────────────────
+ngrok.yml
+ngrok.log
 # --- Fichiers temporaires de travail ---
 env.txt
 *.log
