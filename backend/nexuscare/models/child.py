@@ -39,18 +39,6 @@ class Child(Base):
 
     # Relations
     parent: Mapped["Parent"] = relationship("Parent", back_populates="children")  # noqa: F821
-    rules: Mapped[list["Rule"]] = relationship(  # noqa: F821
-        "Rule", back_populates="child", cascade="all, delete-orphan"
-    )
-    app_usages: Mapped[list["AppUsage"]] = relationship(  # noqa: F821
-        "AppUsage", back_populates="child", cascade="all, delete-orphan"
-    )
-    alerts: Mapped[list["Alert"]] = relationship(  # noqa: F821
-        "Alert", back_populates="child", cascade="all, delete-orphan"
-    )
-    permission_requests: Mapped[list["PermissionRequest"]] = relationship(  # noqa: F821
-        "PermissionRequest", back_populates="child", cascade="all, delete-orphan"
-    )
 
     @staticmethod
     def compute_tier(age: int) -> str:

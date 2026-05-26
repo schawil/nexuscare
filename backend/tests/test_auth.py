@@ -4,14 +4,14 @@ Utilise une base SQLite in-memory pour l'isolation complète.
 """
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from nexuscare.core.database import Base, get_db
 from nexuscare.main import app
 
 # ─── Base de données in-memory pour les tests ────────────────────────────────
-TEST_DATABASE_URL = "sqlite:///:memory:"
+TEST_DATABASE_URL = "sqlite:///file::memory:?cache=shared"
 
 engine_test = create_engine(
     TEST_DATABASE_URL,
@@ -28,15 +28,22 @@ def override_get_db():
         db.close()
 
 
+# Override le dependency AVANT la création du client de test
 app.dependency_overrides[get_db] = override_get_db
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def setup_db():
     """Recrée les tables avant chaque test et les supprime après."""
+    # Crée toutes les tables dans la DB de test
     Base.metadata.create_all(bind=engine_test)
     yield
+    # Nettoie après le test
     Base.metadata.drop_all(bind=engine_test)
+
+
+# Créer les tables une fois au chargement du module pour les fixtures qui en ont besoin
+Base.metadata.create_all(bind=engine_test)
 
 
 @pytest.fixture

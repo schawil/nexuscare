@@ -1,31 +1,40 @@
+```
 # Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
+venv/
 .venv/
-*.egg-info/
-dist/
 .env
+.env.local
+.env.*
 
-# Android
-*.apk
-*.aab
-*.class
-.gradle/
+# Logs
+*.log
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+
+# Build artifacts
 build/
-local.properties
-*.iml
+dist/
+*.egg-info/
+
+# Editors
+.vscode/
 .idea/
-captures/
-
-# Database
-*.db
-*.db-shm
-*.db-wal
-
-# ngrok
-ngrok.yml
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+```
