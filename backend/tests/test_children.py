@@ -1,59 +1,12 @@
 """
-Tests d'intégration — Module Children (37 tests au total avec Auth)
+Tests d'intégration — Module Children (23 tests au total)
+Utilise les fixtures partagées définies dans conftest.py
 """
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from nexuscare.core.database import Base, get_db
-from nexuscare.main import app
-
-engine_test = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine_test)
-    yield
-    Base.metadata.drop_all(bind=engine_test)
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
-
-
-@pytest.fixture
-def auth_headers(client: TestClient) -> dict:
-    client.post("/api/v1/auth/register", json={
-        "full_name": "Sandrine Dupont",
-        "email": "sandrine@test.com",
-        "password": "motdepasse123",
-    })
-    resp = client.post("/api/v1/auth/login", json={
-        "email": "sandrine@test.com",
-        "password": "motdepasse123",
-    })
-    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
-
-
-@pytest.fixture
-def created_child(client: TestClient, auth_headers: dict) -> dict:
-    resp = client.post("/api/v1/children", json={"name": "Léo", "age": 8}, headers=auth_headers)
-    assert resp.status_code == 201
-    return resp.json()
+# Les fixtures client, auth_headers, created_child et setup_db sont importées de conftest.py
 
 
 class TestCreateChild:
@@ -89,8 +42,11 @@ class TestCreateChild:
         assert resp.status_code == 422
 
     def test_requires_auth(self, client):
+        """Test que l'endpoint /children nécessite une authentification.
+        Note: FastAPI retourne 401 (Unauthorized) et non 403 (Forbidden)
+        quand aucun token n'est fourni."""
         resp = client.post("/api/v1/children", json={"name": "Léo", "age": 8})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestListChildren:
