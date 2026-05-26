@@ -1,16 +1,25 @@
 ```
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Memory-related files (based on file::memory pattern)
+file::memory*
+
+# Common temporary and cache files
+*.tmp
+*.temp
+*.cache
+*.log
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment files
 .env
 .env.local
-.env.*
-.coverage
-htmlcov/
-.coverage.*
-.venv/
-venv/
-.mypy_cache/
-.pytest_cache/
+*.env.*
 ```
