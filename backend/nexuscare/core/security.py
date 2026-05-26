@@ -8,23 +8,39 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from nexuscare.core.config import settings
 
 # ─── Contexte bcrypt ─────────────────────────────────────────────────────────
-# deprecated="auto" met à jour automatiquement les anciens hashs au prochain login
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Coût de hachage bcrypt (12 = bon équilibre sécurité/performance en 2024-2025)
+BCRYPT_COST = 12
 
 
 def hash_password(plain: str) -> str:
-    """Hash un mot de passe en clair avec bcrypt (coût 12 par défaut)."""
-    return _pwd_context.hash(plain)
+    """
+    Hash un mot de passe en clair avec bcrypt.
+    Retourne le hash au format $2b$XX$... (compatible vérification)
+    Limite la longueur à 72 bytes (limite bcrypt) avant hachage.
+    """
+    # Bcrypt limite à 72 bytes - on encode puis on tronque si nécessaire
+    password_bytes = plain.encode('utf-8')[:72]
+    salt = bcrypt.gensalt(rounds=BCRYPT_COST)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Vérifie un mot de passe en clair contre son hash bcrypt."""
-    return _pwd_context.verify(plain, hashed)
+    """
+    Vérifie un mot de passe en clair contre son hash bcrypt.
+    Gère automatiquement la limite de 72 bytes.
+    """
+    password_bytes = plain.encode('utf-8')[:72]
+    try:
+        return bcrypt.checkpw(password_bytes, hashed.encode('utf-8'))
+    except (ValueError, AttributeError):
+        # En cas d'erreur sur le hash (format invalide), retourner False
+        return False
 
 
 # ─── JWT ─────────────────────────────────────────────────────────────────────

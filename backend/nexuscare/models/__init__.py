@@ -10,4 +10,12 @@ from nexuscare.models.app_usage import AppUsage
 from nexuscare.models.alert import Alert
 from nexuscare.models.permission_request import PermissionRequest
 
-__all__ = ["Parent", "Child", "RefreshToken", "Rule", "AppUsage", "Alert", "PermissionRequest"]
+__all__ = [
+    "Parent",
+    "Child",
+    "RefreshToken",
+    "Rule",
+    "AppUsage",
+    "Alert",
+    "PermissionRequest",
+]

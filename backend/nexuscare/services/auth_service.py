@@ -84,6 +84,7 @@ def login(data: LoginRequest, db: Session) -> TokenResponse:
     Authentifie un parent.
     Lève HTTP 401 avec un message générique pour ne pas révéler
     si c'est l'email ou le mot de passe qui est incorrect (sécurité).
+    Implémente une vérification à temps constant pour éviter les timing attacks.
     """
     _generic_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -91,10 +92,13 @@ def login(data: LoginRequest, db: Session) -> TokenResponse:
     )
 
     parent = db.query(Parent).filter(Parent.email == data.email).first()
+    
+    # Hash fictif valide pour la vérification à temps constant (même si l'email n'existe pas)
+    _dummy_hash = "$2b$12$LqLiVvH8hQJzK5zJxZ9Yp.vWqN3X5R7T9U1V3W5X7Y9Z1A3B5C7D9"
+    
     if parent is None:
         # Vérifie quand même un hash fictif pour éviter le timing attack
-        # Hash bcrypt valide (coût 12) pour "dummy"
-        verify_password("dummy", "$2b$12$LqLiVvH8hQJzK5zJxZ9Yp.vWqN3X5R7T9U1V3W5X7Y9Z1A3B5C7D9")
+        verify_password("dummy", _dummy_hash)
         raise _generic_error
 
     if not verify_password(data.password, parent.password_hash):
