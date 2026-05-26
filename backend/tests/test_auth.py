@@ -206,8 +206,9 @@ class TestMe:
         assert resp.json()["email"] == "sandrine@test.com"
 
     def test_me_no_token(self, client: TestClient):
+        """Sans token, la dépendance lève 401 (pas 403 car pas d'authentification fournie)."""
         resp = client.get("/api/v1/auth/me")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_me_invalid_token(self, client: TestClient):
         resp = client.get(
