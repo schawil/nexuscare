@@ -1,25 +1,37 @@
 ```
-# Memory-related files (based on file::memory pattern)
-file::memory*
+# Memory-related files (based on modified file pattern)
+*.mem
+*.bin
+*.dat
+*.tmp
 
-# Common temporary and cache files
+# General temporary and cache files
 *.tmp
 *.temp
 *.cache
 *.log
 
-# Editor/IDE files
+# Build artifacts
+build/
+dist/
+target/
+
+# Dependencies
+node_modules/
+__pycache__/
+.venv/
+venv/
+.env
+.env.local
+*.env.*
+
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# System files
+# OS
 .DS_Store
 Thumbs.db
-
-# Environment files
-.env
-.env.local
-*.env.*
 ```
