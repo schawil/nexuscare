@@ -1,0 +1,35 @@
+# --- Environnement Virtuel ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Caches Python et compilation ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Variables d'environnement et Secrets ---
+.env
+.env.*
+!.env.example
+secrets.json
+
+# --- Bases de données locales (Tests / Dev) ---
+*.db
+*.sqlite3
+
+# --- Fichiers système et IDE ---
+.vscode/
+.idea/
+.DS_Store
+*.db
+
+# --- Fichiers temporaires de travail ---
+env.txt
+*.log
+test
+env.txt
