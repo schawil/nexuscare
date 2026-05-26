@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from nexuscare.core.config import settings
-from nexuscare.core.database import engine, Base
+from nexuscare.core.database import Base
 
 # Import de tous les modèles pour que SQLAlchemy crée les tables
 import nexuscare.models  # noqa: F401
@@ -29,9 +29,6 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Crée toutes les tables au démarrage
-    Base.metadata.create_all(bind=engine)
 
     # ── Routers ──────────────────────────────────────────────────────────────
     application.include_router(auth_router.router, prefix="/api/v1")

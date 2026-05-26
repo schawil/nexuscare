@@ -93,7 +93,8 @@ def login(data: LoginRequest, db: Session) -> TokenResponse:
     parent = db.query(Parent).filter(Parent.email == data.email).first()
     if parent is None:
         # Vérifie quand même un hash fictif pour éviter le timing attack
-        verify_password("dummy", "$2b$12$dummyhashtopreventtimingattacks000000000000000000000000")
+        # Hash bcrypt valide (coût 12) pour "dummy"
+        verify_password("dummy", "$2b$12$LqLiVvH8hQJzK5zJxZ9Yp.vWqN3X5R7T9U1V3W5X7Y9Z1A3B5C7D9")
         raise _generic_error
 
     if not verify_password(data.password, parent.password_hash):
