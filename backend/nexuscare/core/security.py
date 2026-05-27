@@ -49,13 +49,14 @@ def create_access_token(parent_id: int) -> str:
     """
     Crée un access token JWT signé HS256.
     Expire dans ACCESS_TOKEN_EXPIRE_MINUTES (config).
+    Payload: {sub: parent_id, type: "parent"}
     """
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {
         "sub": str(parent_id),
-        "type": "access",
+        "type": "parent",
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -79,14 +80,18 @@ def hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
-def decode_access_token(token: str) -> int:
+def decode_access_token(token: str, return_payload: bool = False) -> int | dict:
     """
     Décode et valide un access token JWT.
     Retourne le parent_id (int) si valide.
+    Si return_payload=True, retourne le payload complet (dict).
     Lève JWTError si invalide ou expiré.
     """
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
+    if return_payload:
+        return payload
+    
     if payload.get("type") != "access":
         raise JWTError("Type de token invalide.")
 
@@ -95,3 +100,20 @@ def decode_access_token(token: str) -> int:
         raise JWTError("Token sans sujet.")
 
     return int(sub)
+
+
+def create_device_token(child_id: int) -> str:
+    """
+    Crée un token JWT pour les appareils enfants.
+    Expire dans ACCESS_TOKEN_EXPIRE_MINUTES (config).
+    Payload: {sub: child_id, type: "device"}
+    """
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    payload = {
+        "sub": str(child_id),
+        "type": "device",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

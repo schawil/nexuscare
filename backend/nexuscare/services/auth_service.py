@@ -10,18 +10,21 @@ from sqlalchemy.orm import Session
 from nexuscare.core.security import (
     create_access_token,
     create_refresh_token,
+    create_device_token,
     hash_password,
     hash_token,
     verify_password,
 )
 from nexuscare.models.parent import Parent
 from nexuscare.models.refresh_token import RefreshToken
+from nexuscare.models.child import Child
 from nexuscare.schemas.auth import (
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
     ParentResponse,
     TokenResponse,
+    DeviceLoginRequest,
 )
 from nexuscare.core.config import settings
 
@@ -41,6 +44,7 @@ def _build_token_response(parent: Parent, db: Session) -> TokenResponse:
     )
     db.add(db_refresh)
     db.commit()
+    # Pas besoin de refresh car expire_on_commit=False
 
     return TokenResponse(
         access_token=access_token,
@@ -69,7 +73,7 @@ def register(data: RegisterRequest, db: Session) -> RegisterResponse:
     )
     db.add(parent)
     db.commit()
-    db.refresh(parent)
+    # Pas besoin de refresh car expire_on_commit=False
 
     tokens = _build_token_response(parent, db)
 
@@ -167,4 +171,27 @@ def logout(raw_token: str, db: Session) -> None:
     if db_token and not db_token.is_revoked:
         db_token.is_revoked = True
         db.commit()
-        
+
+
+def device_login(data: DeviceLoginRequest, db: Session) -> TokenResponse:
+    """
+    Authentifie un appareil enfant via son device_id.
+    Vérifie que le device_id existe et est lié à un enfant.
+    Retourne un token JWT de type "device" avec child_id dans le subject.
+    """
+    child = db.query(Child).filter(Child.device_id == data.device_id).first()
+    
+    if child is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Appareil non reconnu. Veuillez vérifier le code de liaison.",
+        )
+    
+    access_token = create_device_token(child.id)
+    
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token="",  # Pas de refresh token pour les devices
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
