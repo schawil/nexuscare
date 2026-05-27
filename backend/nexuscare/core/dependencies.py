@@ -12,8 +12,50 @@ from sqlalchemy.orm import Session
 from nexuscare.core.database import get_db
 from nexuscare.core.security import decode_access_token
 from nexuscare.models.parent import Parent
+from nexuscare.models.child import Child
 
 _bearer = HTTPBearer(auto_error=False)  # auto_error=False permet de gérer nous-mêmes l'erreur
+
+
+def _decode_token_and_validate_type(
+    credentials: Optional[HTTPAuthorizationCredentials],
+    db: Session,
+    expected_type: str,
+) -> tuple[int, str]:
+    """
+    Décode le token JWT et valide son type.
+    Retourne (subject_id, token_type) si valide.
+    Lève HTTPException si invalide.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token invalide ou expiré.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if credentials is None:
+        raise credentials_exception
+
+    try:
+        from jose import jwt
+        from nexuscare.core.config import settings
+        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise credentials_exception
+
+    token_type = payload.get("type")
+    if token_type != expected_type:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Type de token invalide. Attendu: {expected_type}, Reçu: {token_type}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise credentials_exception
+
+    return int(sub), token_type
 
 
 def get_current_parent(
@@ -21,13 +63,9 @@ def get_current_parent(
     db: Session = Depends(get_db),
 ) -> Parent:
     """
-    Dépendance d'authentification.
-    Valide le Bearer token JWT et retourne le Parent connecté.
-    Utilisé dans toutes les routes protégées : 
-    router.get("/...", dependencies=[Depends(get_current_parent)])
-    
-    Ou avec injection directe :
-    def ma_route(current_parent: Parent = Depends(get_current_parent)): ...
+    Dépendance d'authentification parent.
+    Valide le Bearer token JWT (type="access") et retourne le Parent connecté.
+    Utilisé dans toutes les routes protégées parent.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,9 +89,55 @@ def get_current_parent(
 
 
 # Type annoté pour réutiliser la dépendance facilement
-# Exemple : current_parent: CurrentParentDep = Depends(get_current_parent)
-# À définir APRÈS la fonction get_current_parent pour éviter NameError
 CurrentParentDep = Annotated[Parent, Depends(get_current_parent)]
+
+
+def get_current_child(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> Child:
+    """
+    Dépendance d'authentification enfant (appareil).
+    Valide le Bearer token JWT (type="device") et retourne le Child connecté.
+    Utilisé dans les routes appelées par l'APK Enfant.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token enfant invalide ou expiré.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if credentials is None:
+        raise credentials_exception
+
+    try:
+        from jose import jwt
+        from nexuscare.core.config import settings
+        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise credentials_exception
+
+    token_type = payload.get("type")
+    if token_type != "device":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Type de token invalide. Attendu: device, Reçu: {token_type}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    child_id = payload.get("sub")
+    if child_id is None:
+        raise credentials_exception
+
+    child = db.get(Child, int(child_id))
+    if child is None:
+        raise credentials_exception
+
+    return child
+
+
+# Type annoté pour réutiliser la dépendance facilement
+CurrentChildDep = Annotated[Child, Depends(get_current_child)]
 
 
 def get_current_parent_optional(
@@ -63,8 +147,6 @@ def get_current_parent_optional(
     """
     Dépendance d'authentification optionnelle.
     Retourne le Parent si authentifié, sinon None.
-    Utile pour les routes qui fonctionnent aussi bien pour les utilisateurs
-    authentifiés que non-authentifiés (ex: liste publique avec options premium).
     """
     if credentials is None:
         return None

@@ -16,6 +16,7 @@ from nexuscare.schemas.auth import (
     RegisterResponse,
     TokenResponse,
     ParentResponse,
+    DeviceLoginRequest,
 )
 from nexuscare.services import auth_service
 
@@ -91,3 +92,19 @@ def me(current_parent: Parent = Depends(get_current_parent)) -> ParentResponse:
     Utile pour valider un access token côté mobile.
     """
     return ParentResponse.model_validate(current_parent)
+
+
+@router.post(
+    "/device-login",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Connexion appareil enfant",
+)
+def device_login(data: DeviceLoginRequest, db: Session = Depends(get_db)) -> dict:
+    """
+    Authentifie un appareil enfant via son device_id.
+    Retourne un token JWT de type "device" sans refresh token.
+    Le device_id doit avoir été préalablement lié par un parent via l'endpoint
+    POST /api/v1/children/{id}/link-device.
+    """
+    return auth_service.device_login(data, db)

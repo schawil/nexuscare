@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 from nexuscare.core.security import (
     create_access_token,
     create_refresh_token,
+    create_device_token,
     hash_password,
     hash_token,
     verify_password,
 )
 from nexuscare.models.parent import Parent
+from nexuscare.models.child import Child
 from nexuscare.models.refresh_token import RefreshToken
 from nexuscare.schemas.auth import (
     LoginRequest,
@@ -22,6 +24,7 @@ from nexuscare.schemas.auth import (
     RegisterResponse,
     ParentResponse,
     TokenResponse,
+    DeviceLoginRequest,
 )
 from nexuscare.core.config import settings
 
@@ -168,3 +171,30 @@ def logout(raw_token: str, db: Session) -> None:
     if db_token and not db_token.is_revoked:
         db_token.is_revoked = True
         db.commit()
+
+
+def device_login(data: DeviceLoginRequest, db: Session) -> dict:
+    """
+    Authentifie un appareil enfant via son device_id.
+    Retourne un token JWT de type "device" sans refresh token.
+    Lève HTTP 404 si le device_id n'est pas lié à un enfant.
+    """
+    # Cherche un enfant avec ce device_id
+    child = db.query(Child).filter(Child.device_id == data.device_id).first()
+    
+    if child is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appareil non lié. Veuillez saisir le code de liaison fourni par le parent.",
+        )
+    
+    # Crée un token device (pas de refresh token pour les enfants)
+    access_token = create_device_token(child.id, data.device_id)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "child_id": child.id,
+        "profile_tier": child.profile_tier,
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }

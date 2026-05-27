@@ -119,6 +119,13 @@ class RuleResponse(BaseModel):
         )
 
 
+class ActiveRulesResponse(BaseModel):
+    """Réponse pour les règles actives d'un enfant (APK Enfant)."""
+    child_id: int
+    profile_tier: str
+    rules: list[RuleResponse]
+
+
 class MessageResponse(BaseModel):
     """Réponse message simple."""
     message: str

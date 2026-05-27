@@ -47,7 +47,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(parent_id: int) -> str:
     """
-    Crée un access token JWT signé HS256.
+    Crée un access token JWT signé HS256 pour un parent.
     Expire dans ACCESS_TOKEN_EXPIRE_MINUTES (config).
     """
     expire = datetime.now(timezone.utc) + timedelta(
@@ -56,6 +56,24 @@ def create_access_token(parent_id: int) -> str:
     payload = {
         "sub": str(parent_id),
         "type": "access",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_device_token(child_id: int, device_id: str) -> str:
+    """
+    Crée un access token JWT signé HS256 pour un appareil enfant.
+    Expire dans ACCESS_TOKEN_EXPIRE_MINUTES (config).
+    Payload : {sub: child_id, type: "device", device_id: device_id}
+    """
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    payload = {
+        "sub": str(child_id),
+        "type": "device",
+        "device_id": device_id,
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
