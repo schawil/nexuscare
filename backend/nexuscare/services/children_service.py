@@ -43,7 +43,7 @@ def create_child(data: ChildCreateRequest, parent: Parent, db: Session) -> Child
     child = Child(parent_id=parent.id, name=data.name, age=data.age, profile_tier=tier)
     db.add(child)
     db.commit()
-    db.refresh(child)
+    # Pas besoin de refresh car expire_on_commit=False
     return ChildResponse.from_orm_child(child)
 
 
@@ -62,7 +62,7 @@ def update_child(child_id: int, data: ChildUpdateRequest, parent: Parent, db: Se
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     db.commit()
-    db.refresh(child)
+    # Pas besoin de refresh car expire_on_commit=False
     return ChildResponse.from_orm_child(child)
 
 
@@ -77,6 +77,7 @@ def generate_link_code(child_id: int, parent: Parent, db: Session) -> LinkCodeRe
     raw_code = str(secrets.randbelow(1_000_000)).zfill(6)
     child.link_code_hash = hash_token(raw_code)
     db.commit()
+    # Pas besoin de refresh car expire_on_commit=False
     return LinkCodeResponse(child_id=child.id, code=raw_code, expires_in=_LINK_CODE_TTL_SECONDS)
 
 
@@ -95,5 +96,5 @@ def link_device(child_id: int, code: str, device_id: str, parent: Parent, db: Se
     child.device_id = device_id
     child.link_code_hash = None
     db.commit()
-    db.refresh(child)
+    # Pas besoin de refresh car expire_on_commit=False
     return ChildResponse.from_orm_child(child)

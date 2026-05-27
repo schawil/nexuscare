@@ -67,7 +67,7 @@ def create_rule(data: RuleCreateRequest, parent: Parent, db: Session) -> RuleRes
     )
     db.add(rule)
     db.commit()
-    db.refresh(rule)
+    # Pas besoin de refresh car expire_on_commit=False
     
     return RuleResponse.from_orm_rule(rule)
 
@@ -107,7 +107,7 @@ def update_rule(rule_id: int, data: RuleUpdateRequest, parent: Parent, db: Sessi
         rule.is_active = data.is_active
     
     db.commit()
-    db.refresh(rule)
+    # Pas besoin de refresh car expire_on_commit=False
     
     return RuleResponse.from_orm_rule(rule)
 
@@ -117,7 +117,7 @@ def toggle_rule(rule_id: int, is_active: bool, parent: Parent, db: Session) -> R
     rule = _get_rule_or_404(rule_id, parent, db)
     rule.is_active = is_active
     db.commit()
-    db.refresh(rule)
+    # Pas besoin de refresh car expire_on_commit=False
     return RuleResponse.from_orm_rule(rule)
 
 
