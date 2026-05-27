@@ -9,6 +9,7 @@ import nexuscare.models  # noqa: F401 — importe tous les modèles pour SQLAlch
 from nexuscare.routers import auth as auth_router
 from nexuscare.routers import children as children_router
 from nexuscare.routers import rules as rules_router
+from nexuscare.routers import usage as usage_router
 
 
 def create_application() -> FastAPI:
@@ -30,6 +31,7 @@ def create_application() -> FastAPI:
     application.include_router(auth_router.router,     prefix="/api/v1")
     application.include_router(children_router.router, prefix="/api/v1")
     application.include_router(rules_router.router,    prefix="/api/v1")
+    application.include_router(usage_router.router,    prefix="/api/v1")
 
     @application.get("/health", tags=["Système"])
     def health_check():

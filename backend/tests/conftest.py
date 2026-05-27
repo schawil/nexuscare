@@ -1,10 +1,6 @@
 """
 conftest.py — Configuration globale pytest + fixtures partagées.
 Gère la base de données SQLite en mémoire pour les tests.
-
-IMPORTANT: Pour SQLite en mémoire avec FastAPI TestClient (qui utilise des threads),
-nous devons utiliser un fichier temporaire ou StaticMemoryPool pour partager la DB
-entre le thread principal et le thread du TestClient.
 """
 import warnings
 import pytest
@@ -13,59 +9,86 @@ import os
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 # Importer TOUS les modèles AVANT de créer les tables
-# Cela garantit que SQLAlchemy connaît toutes les tables
 from nexuscare.core.database import Base, get_db
 from nexuscare.main import app as main_app
-import nexuscare.models  # noqa: F401 — assure que tous les modèles sont chargés
+import nexuscare.models  # noqa: F401
 
-
-# Filtre les DeprecationWarnings des dépendances tierces
+# Filtre les DeprecationWarnings
 def pytest_configure(config):
-    """Filtre les warnings de libs tierces au démarrage de pytest."""
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="httpx")
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose")
 
 
-# Option 1: Utiliser StaticPool pour garder la DB en mémoire partagée entre threads
-# C'est la solution recommandée pour les tests rapides
-# Note: on utilise file::memory:?cache=shared avec StaticPool pour une compatibilité maximale
-TEST_DATABASE_URL = "sqlite:///file::memory:?cache=shared"
-engine_test = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,  # IMPORTANT: permet le partage entre threads
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
-
-
-def override_get_db():
-    """Override de la dépendance get_db pour utiliser la DB de test."""
-    db = TestingSessionLocal()
+# Création d'une DB temporaire par session de test
+@pytest.fixture(scope="session")
+def db_engine():
+    """Crée un moteur SQLite avec fichier temporaire."""
+    fd, path = tempfile.mkstemp(suffix=".db", prefix="test_")
+    os.close(fd)
+    
+    engine = create_engine(
+        f"sqlite:///{path}",
+        connect_args={"check_same_thread": False},
+    )
+    
+    # Crée toutes les tables
+    Base.metadata.create_all(engine)
+    
+    yield engine
+    
+    # Nettoie
     try:
-        yield db
-    finally:
-        db.close()
+        os.unlink(path)
+    except OSError:
+        pass
 
 
-# Applique l'override AVANT que les tests ne commencent
-main_app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(scope="session")
+def db_session_factory(db_engine):
+    """Crée la factory de sessions."""
+    return sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 
 
 @pytest.fixture(autouse=True)
-def setup_db():
-    """
-    Fixture automatique qui crée/détruit le schéma DB avant/après chaque test.
-    Utilise autouse=True pour s'exécuter automatiquement pour tous les tests.
-    """
-    # Crée TOUTES les tables connues par SQLAlchemy
-    Base.metadata.create_all(bind=engine_test)
+def reset_db(db_session_factory):
+    """Vide la DB avant chaque test pour isolation totale."""
+    Session = db_session_factory
+    db = Session()
+    try:
+        # Supprime tout dans l'ordre des dépendances
+        from nexuscare.models.parent import Parent
+        from nexuscare.models.child import Child
+        from nexuscare.models.refresh_token import RefreshToken
+        from nexuscare.models.rule import Rule
+        from nexuscare.models.app_usage import AppUsage
+        from nexuscare.models.alert import Alert
+        from nexuscare.models.permission_request import PermissionRequest
+        
+        for model in [PermissionRequest, AppUsage, Alert, Rule, RefreshToken, Child, Parent]:
+            db.query(model).delete()
+        db.commit()
+    finally:
+        db.close()
     yield
-    # Nettoie après le test
-    Base.metadata.drop_all(bind=engine_test)
+
+
+# Override de la dépendance get_db
+@pytest.fixture(autouse=True)
+def override_db(db_session_factory):
+    """Override get_db pour tous les tests."""
+    def _get_db():
+        db = db_session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+    
+    main_app.dependency_overrides[get_db] = _get_db
+    yield
+    main_app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -114,12 +137,12 @@ def created_child(client: TestClient, auth_headers: dict) -> dict:
 
 
 @pytest.fixture
-def db_session():
+def db_session(db_session_factory):
     """
     Fixture pour obtenir une session DB directe dans les tests.
-    Utilise la même engine de test que override_get_db.
+    Utilise la factory de sessions de test.
     """
-    db = TestingSessionLocal()
+    db = db_session_factory()
     try:
         yield db
     finally:

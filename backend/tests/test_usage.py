@@ -28,18 +28,11 @@ class TestReportUsage:
 
     def test_report_usage_success(self, client: TestClient, db_session: Session, child_token_headers: dict):
         """Un enfant peut rapporter son usage."""
-        # Crée d'abord un enfant lié
-        from nexuscare.models.parent import Parent
-        parent = db_session.query(Parent).first()
-        child = Child(
-            parent_id=parent.id,
-            name="Test Child",
-            age=10,
-            device_id="android-test123",
-        )
-        db_session.add(child)
-        db_session.commit()
-        db_session.refresh(child)
+        # Récupère l'enfant lié créé par la fixture child_token_headers
+        from nexuscare.core.security import decode_access_token
+        token = child_token_headers["Authorization"].split(" ")[1]
+        payload = decode_access_token(token, return_payload=True)
+        child_id = int(payload["sub"])
         
         payload = {
             "usages": [
@@ -58,7 +51,7 @@ class TestReportUsage:
             ]
         }
         
-        resp = client.post(f"/api/v1/children/{child.id}/usage", json=payload, headers=child_token_headers)
+        resp = client.post(f"/api/v1/children/{child_id}/usage", json=payload, headers=child_token_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["entries_processed"] == 2
@@ -66,17 +59,11 @@ class TestReportUsage:
 
     def test_report_usage_upsert_adds_duration(self, client: TestClient, db_session: Session, child_token_headers: dict):
         """Le rapport UPSERT additionne les durées pour une même app/date."""
-        from nexuscare.models.parent import Parent
-        parent = db_session.query(Parent).first()
-        child = Child(
-            parent_id=parent.id,
-            name="Test Child",
-            age=10,
-            device_id="android-test456",
-        )
-        db_session.add(child)
-        db_session.commit()
-        db_session.refresh(child)
+        # Récupère l'enfant lié créé par la fixture
+        from nexuscare.core.security import decode_access_token
+        token = child_token_headers["Authorization"].split(" ")[1]
+        payload = decode_access_token(token, return_payload=True)
+        child_id = int(payload["sub"])
         
         today = str(datetime.now(timezone.utc).date())
         
@@ -89,7 +76,7 @@ class TestReportUsage:
                 "usage_date": today,
             }]
         }
-        client.post(f"/api/v1/children/{child.id}/usage", json=payload1, headers=child_token_headers)
+        client.post(f"/api/v1/children/{child_id}/usage", json=payload1, headers=child_token_headers)
         
         # Deuxième rapport (même app, même jour)
         payload2 = {
@@ -100,28 +87,22 @@ class TestReportUsage:
                 "usage_date": today,
             }]
         }
-        client.post(f"/api/v1/children/{child.id}/usage", json=payload2, headers=child_token_headers)
+        client.post(f"/api/v1/children/{child_id}/usage", json=payload2, headers=child_token_headers)
         
         # Vérifie que la durée totale est 900 (600 + 300)
         usage = db_session.query(AppUsage).filter(
-            AppUsage.child_id == child.id,
+            AppUsage.child_id == child_id,
             AppUsage.package_name == "com.instagram.android",
         ).first()
         assert usage.duration_seconds == 900
 
     def test_report_usage_invalid_duration(self, client: TestClient, db_session, child_token_headers: dict):
         """Durée négative rejetée."""
-        from nexuscare.models.parent import Parent
-        parent = db_session.query(Parent).first()
-        child = Child(
-            parent_id=parent.id,
-            name="Test Child",
-            age=10,
-            device_id="android-test789",
-        )
-        db_session.add(child)
-        db_session.commit()
-        db_session.refresh(child)
+        # Récupère l'enfant lié créé par la fixture
+        from nexuscare.core.security import decode_access_token
+        token = child_token_headers["Authorization"].split(" ")[1]
+        payload = decode_access_token(token, return_payload=True)
+        child_id = int(payload["sub"])
         
         payload = {
             "usages": [{
@@ -132,7 +113,7 @@ class TestReportUsage:
             }]
         }
         
-        resp = client.post(f"/api/v1/children/{child.id}/usage", json=payload, headers=child_token_headers)
+        resp = client.post(f"/api/v1/children/{child_id}/usage", json=payload, headers=child_token_headers)
         assert resp.status_code == 422
 
     def test_report_usage_wrong_child(self, client: TestClient, db_session, child_token_headers: dict, auth_headers: dict):
@@ -140,10 +121,9 @@ class TestReportUsage:
         from nexuscare.models.parent import Parent
         parent = db_session.query(Parent).first()
         
-        # Crée deux enfants
-        child1 = Child(parent_id=parent.id, name="Test Child", age=10, device_id="android-c1")
-        child2 = Child(parent_id=parent.id, name="Test Child", age=8, device_id="android-c2")
-        db_session.add_all([child1, child2])
+        # Crée un deuxième enfant
+        child2 = Child(parent_id=parent.id, name="Child2", age=8, profile_tier="CHILDHOOD", device_id="android-c2")
+        db_session.add(child2)
         db_session.commit()
         
         # Token de child1 essaie de poster pour child2
@@ -165,8 +145,9 @@ class TestGetTodayUsage:
 
     def test_get_today_empty(self, client: TestClient, db_session, auth_headers: dict):
         """Aujourd'hui sans usage retourne total à 0."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -178,8 +159,9 @@ class TestGetTodayUsage:
 
     def test_get_today_with_data(self, client: TestClient, db_session, auth_headers: dict):
         """Récupère l'usage du jour avec des données."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -207,8 +189,9 @@ class TestGetWeeklyUsage:
 
     def test_get_weekly_seven_days(self, client: TestClient, db_session, auth_headers: dict):
         """Retourne exactement 7 jours, même sans données."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -222,8 +205,9 @@ class TestGetWeeklyUsage:
 
     def test_get_weekly_with_data(self, client: TestClient, db_session, auth_headers: dict):
         """Semaine avec des données."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -246,8 +230,9 @@ class TestGetDailyUsage:
 
     def test_get_daily_specific_date(self, client: TestClient, db_session, auth_headers: dict):
         """Récupère l'usage d'une date précise."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -267,23 +252,24 @@ class TestGetUsageSummary:
 
     def test_summary_with_limit(self, client: TestClient, db_session, auth_headers: dict):
         """Résumé avec limite SCREEN_LIMIT."""
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        from nexuscare.models.parent import Parent
+        
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
         today = datetime.now(timezone.utc).date()
         db_session.add(AppUsage(child_id=child.id, package_name="com.game.app", app_name="Game", duration_seconds=3600, usage_date=today))
         
-        # Crée une règle SCREEN_LIMIT de 2 heures (7200s)
-        rule = Rule(
-            child_id=child.id,
-            rule_type=RuleType.SCREEN_LIMIT,
-            config={"daily_limit_seconds": 7200},
-            is_active=True,
-        )
-        db_session.add(rule)
-        db_session.commit()
+        # Crée une règle SCREEN_LIMIT de 2 heures (7200s) via l'API rules
+        rule_data = {
+            "rule_type": "SCREEN_LIMIT",
+            "config": {"daily_limit_seconds": 7200},
+            "is_active": True,
+        }
+        resp_rule = client.post(f"/api/v1/rules/child/{child.id}", json=rule_data, headers=auth_headers)
+        assert resp_rule.status_code == 201
         
         resp = client.get(f"/api/v1/children/{child.id}/usage/summary", headers=auth_headers)
         assert resp.status_code == 200
@@ -300,9 +286,10 @@ class TestCleanupOldUsage:
     def test_cleanup_old_usage(self, client: TestClient, db_session, auth_headers: dict):
         """Supprime les entrées de plus de 30 jours."""
         from nexuscare.services import usage_service
+        from nexuscare.models.parent import Parent
         
-        parent = db_session.query(Child).first().parent
-        child = Child(parent_id=parent.id, name="Test Child", age=10)
+        parent = db_session.query(Parent).first()
+        child = Child(parent_id=parent.id, name="Test Child", age=10, profile_tier="PREADOLESCENCE")
         db_session.add(child)
         db_session.commit()
         
@@ -316,7 +303,7 @@ class TestCleanupOldUsage:
         db_session.commit()
         
         # Nettoie
-        deleted = usage_service.cleanup_old_usage(db, days_to_keep=30)
+        deleted = usage_service.cleanup_old_usage(db_session, days_to_keep=30)
         assert deleted == 1
         
         # Vérifie qu'il reste seulement la donnée récente
@@ -340,7 +327,7 @@ class TestUsageIsolation:
         db_session.commit()
         
         # Enfant du parent2
-        child2 = Child(parent_id=parent2.id, name="Test Child", age=8)
+        child2 = Child(parent_id=parent2.id, name="Test Child", age=8, profile_tier="CHILDHOOD")
         db_session.add(child2)
         db_session.commit()
         

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from nexuscare.models.app_usage import AppUsage
 from nexuscare.models.child import Child
-from nexuscare.models.rule import Rule, RuleType
+from nexuscare.models.rule import Rule
 from nexuscare.schemas.usage import (
     DailyUsageResponse,
     UsageEntry,
@@ -97,7 +97,7 @@ def get_today_usage(child_id: int, db: Session) -> DailyUsageResponse:
     screen_limit_rule = db.query(Rule).filter(
         and_(
             Rule.child_id == child_id,
-            Rule.rule_type == RuleType.SCREEN_LIMIT,
+            Rule.rule_type == "SCREEN_LIMIT",
             Rule.is_active.is_(True),
         )
     ).first()
@@ -222,7 +222,7 @@ def get_usage_summary(child_id: int, db: Session) -> UsageSummaryResponse:
     screen_limit_rule = db.query(Rule).filter(
         and_(
             Rule.child_id == child_id,
-            Rule.rule_type == RuleType.SCREEN_LIMIT,
+            Rule.rule_type == "SCREEN_LIMIT",
             Rule.is_active.is_(True),
         )
     ).first()
