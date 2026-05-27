@@ -111,3 +111,59 @@ def created_child(client: TestClient, auth_headers: dict) -> dict:
     )
     assert resp.status_code == 201, f"Create child failed: {resp.json()}"
     return resp.json()
+
+
+@pytest.fixture
+def db_session():
+    """
+    Fixture pour obtenir une session DB directe dans les tests.
+    Utilise la même engine de test que override_get_db.
+    """
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture
+def child_token_headers(client: TestClient, auth_headers: dict) -> dict:
+    """
+    Fixture qui crée un enfant lié et retourne un token device pour l'enfant.
+    Utilisé pour tester les endpoints appelés par l'APK Enfant.
+    """
+    # Crée un enfant (utilise 'name' pas 'first_name')
+    resp_child = client.post(
+        "/api/v1/children",
+        json={"name": "Test Child", "age": 10},
+        headers=auth_headers
+    )
+    assert resp_child.status_code == 201, f"Failed to create child: {resp_child.json()}"
+    child_data = resp_child.json()
+    child_id = child_data["id"]
+    
+    # Génère un code de liaison
+    resp_code = client.post(
+        f"/api/v1/children/{child_id}/link-code",
+        headers=auth_headers
+    )
+    assert resp_code.status_code == 200, f"Failed to generate link code: {resp_code.json()}"
+    code = resp_code.json()["code"]
+    
+    # Lie l'appareil avec un device_id Android fictif (nécessite le code)
+    device_id = "android-test-device-xyz"
+    resp_link = client.post(
+        f"/api/v1/children/{child_id}/link-device",
+        json={"code": code, "device_id": device_id},
+        headers=auth_headers
+    )
+    assert resp_link.status_code == 200, f"Failed to link device: {resp_link.json()}"
+    
+    # Login device pour obtenir le token
+    resp_login = client.post(
+        "/api/v1/auth/device-login",
+        json={"device_id": device_id}
+    )
+    assert resp_login.status_code == 200, f"Failed device login: {resp_login.json()}"
+    
+    return {"Authorization": f"Bearer {resp_login.json()['access_token']}"}
