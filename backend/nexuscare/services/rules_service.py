@@ -126,3 +126,20 @@ def delete_rule(rule_id: int, parent: Parent, db: Session) -> None:
     rule = _get_rule_or_404(rule_id, parent, db)
     db.delete(rule)
     db.commit()
+
+
+def get_active_rules_for_child(child_id: int, child: Child, db: Session) -> list[RuleResponse]:
+    """
+    Récupère toutes les règles actives d'un enfant.
+    Endpoint appelé par l'APK Enfant toutes les 30s.
+    """
+    rules = (
+        db.query(Rule)
+        .filter(
+            Rule.child_id == child_id,
+            Rule.is_active == True,  # noqa: E712
+        )
+        .order_by(Rule.created_at.asc())
+        .all()
+    )
+    return [RuleResponse.from_orm_rule(r) for r in rules]

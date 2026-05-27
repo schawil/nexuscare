@@ -2,11 +2,12 @@
 Router Rules — CRUD des règles de contrôle parental.
 Préfixe : /api/v1/rules
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from nexuscare.core.database import get_db
-from nexuscare.core.dependencies import get_current_parent
+from nexuscare.core.dependencies import get_current_parent, get_current_child
 from nexuscare.models.parent import Parent
+from nexuscare.models.child import Child
 from nexuscare.schemas.rules import (
     RuleCreateRequest,
     RuleUpdateRequest,
@@ -16,6 +17,31 @@ from nexuscare.schemas.rules import (
 from nexuscare.services import rules_service
 
 router = APIRouter(prefix="/rules", tags=["Règles"])
+
+
+@router.get(
+    "/child/{child_id}/active",
+    response_model=list[RuleResponse],
+    summary="Règles actives (APK Enfant)",
+)
+def get_active_rules(
+    child_id: int,
+    db: Session = Depends(get_db),
+    current_child: Child = Depends(get_current_child),
+) -> list[RuleResponse]:
+    """
+    Endpoint appelé par l'APK Enfant toutes les 30 secondes.
+    Retourne uniquement les règles is_active=True pour cet enfant.
+    Auth : token enfant requis (device_id dans le JWT).
+    """
+    # Vérifie que le token enfant correspond bien au child_id de l'URL
+    if current_child.id != child_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token enfant non correspondant à cet ID.",
+        )
+    
+    return rules_service.get_active_rules_for_child(child_id, current_child, db)
 
 
 @router.get("/child/{child_id}", response_model=list[RuleResponse], summary="Lister les règles d'un enfant")

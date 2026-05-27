@@ -61,3 +61,8 @@ class RegisterResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class DeviceLoginRequest(BaseModel):
+    """Requête pour le login d'un appareil enfant."""
+    device_id: str = Field(min_length=1, max_length=255, examples=["android-abc123def456"])

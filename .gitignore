@@ -1,73 +1,96 @@
-# Dependencies
+```
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache/
-.mypy_cache/
+.Python
+env/
+venv/
+.venv/
+.ENV
+.ENV.*
+.venv/
+.venv.*
+.ENV
+.ENV.*
+.venv/
+.venv.*
+.ENV
+.ENV.*
+
+# Testing
 .coverage
 coverage/
 htmlcov/
+.nox/
+.tox/
 
-# Build and distribution artifacts
-dist/
-build/
-*.egg-info/
+# Security
+*.env
+*.env.local
+*.env.dev
+*.env.test
+*.env.prod
+.env.vault
 
-# Virtual environments
-venv/
-.venv/
-env/
-.ENV/
-
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Editors
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
 
-# OS generated files
+# OS
 .DS_Store
 Thumbs.db
 
-# Compiled files
-*.class
-*.o
-*.obj
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
 *.so
-*.a
+*.dylib
 *.dll
 *.exe
 *.out
 
+# Package manager
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+.coverage
+htmlcov/
+.coverage.*
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# FastAPI/Swagger
+*.openapi.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Compressed files
 *.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.tar.zst
+*.gz
+*.rar
+*.7z
+```
