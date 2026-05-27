@@ -1,4 +1,4 @@
-# ── Python ────────────────────────────────────────────────────────────────────
+# ── Python & FastAPI ─────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
@@ -16,11 +16,12 @@ build/
 .env.local
 .env.*.local
 
-# ── Base de données ───────────────────────────────────────────────────────────
+# ── Base de données (NE JAMAIS VERSIONNER) ────────────────────────────────────
 *.db
 *.db-shm
 *.db-wal
 *.sqlite3
+file::memory:
 
 # ── Tests & Coverage ──────────────────────────────────────────────────────────
 .pytest_cache/
@@ -29,24 +30,26 @@ htmlcov/
 coverage.xml
 
 # ── Alembic ───────────────────────────────────────────────────────────────────
-# On versionne les migrations mais pas les fichiers de lock
 alembic/__pycache__/
 
-# ── IDE ───────────────────────────────────────────────────────────────────────
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
 .vscode/settings.json
 .idea/
 *.iml
-
-# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# ── ngrok ─────────────────────────────────────────────────────────────────────
+# ── ngrok & Logs ──────────────────────────────────────────────────────────────
 ngrok.yml
 ngrok.log
-# --- Fichiers temporaires de travail ---
 env.txt
 *.log
 test
-env.txt
 
+# ── SQLite & DB temporaires ──────────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+file::memory:
+EOF
